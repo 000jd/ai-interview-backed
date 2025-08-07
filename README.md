@@ -1,1 +1,3 @@
-# ai-interview-backed
+# AI Interview Platform
+
+This is the backend for the AI Interview Platform.
