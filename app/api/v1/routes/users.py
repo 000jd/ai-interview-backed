@@ -20,7 +20,6 @@ async def update_user_me(
     db: Session = Depends(get_db)
 ):
     """Update current user profile"""
-    # Update user fields
     if user_update.full_name is not None:
         current_user.full_name = user_update.full_name
     if user_update.is_active is not None and current_user.is_superuser:

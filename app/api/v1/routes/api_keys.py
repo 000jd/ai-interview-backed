@@ -16,7 +16,6 @@ async def create_api_key(
     db: Session = Depends(get_db)
 ):
     """Create new API key"""
-    # Check if user has reached the limit
     existing_keys = crud.get_user_api_keys(db, user_id=current_user.id)
     active_keys = [k for k in existing_keys if k.is_active]
     

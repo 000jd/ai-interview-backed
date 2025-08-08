@@ -9,7 +9,6 @@ from app.core.livekit_manager import LiveKitManager
 
 router = APIRouter()
 
-# Dependency to get LiveKit manager
 def get_livekit_manager():
     return LiveKitManager()
 
@@ -21,17 +20,14 @@ async def create_interview(
     livekit_manager: LiveKitManager = Depends(get_livekit_manager)
 ):
     """Create new interview session"""
-    # Create interview in database
     db_interview = crud.create_interview(db=db, interview=interview, user_id=current_user.id)
     
-    # Create LiveKit room
     room_created = await livekit_manager.create_room(
         room_name=db_interview.room_name,
         empty_timeout=1800  # 30 minutes
     )
     
     if not room_created:
-        # Update status to indicate room creation failed
         crud.update_interview(
             db, 
             db_interview.id, 
@@ -65,7 +61,6 @@ async def get_interview(
             detail="Interview not found"
         )
     
-    # Check if user owns this interview
     if db_interview.creator_id != current_user.id and not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -90,7 +85,6 @@ async def update_interview(
             detail="Interview not found"
         )
     
-    # Check permissions
     if db_interview.creator_id != current_user.id and not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -116,14 +110,12 @@ async def generate_interview_token(
             detail="Interview not found"
         )
     
-    # Check permissions
     if db_interview.creator_id != current_user.id and not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
         )
     
-    # Generate token
     token = livekit_manager.generate_token(
         room_name=db_interview.room_name,
         participant_name=db_interview.candidate_name,
@@ -136,7 +128,6 @@ async def generate_interview_token(
         participant_name=db_interview.candidate_name
     )
 
-# API endpoint for external integrations (uses API key auth)
 @router.post("/api/create", response_model=schemas.Interview)
 async def api_create_interview(
     interview: schemas.InterviewCreate,
@@ -145,10 +136,8 @@ async def api_create_interview(
     livekit_manager: LiveKitManager = Depends(get_livekit_manager)
 ):
     """Create interview via API key (for integrations)"""
-    # Create interview in database
     db_interview = crud.create_interview(db=db, interview=interview, user_id=current_user.id)
     
-    # Create LiveKit room
     room_created = await livekit_manager.create_room(
         room_name=db_interview.room_name,
         empty_timeout=1800  # 30 minutes
