@@ -3,6 +3,8 @@ from scalar_fastapi import get_scalar_api_reference
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from contextlib import asynccontextmanager
+import logging
+from app.core.logging_config import setup_logging
 import uvicorn
 
 # Import all modules
@@ -14,24 +16,23 @@ from app import schemas, crud
 from app.api.api import api_router
 from app.core.livekit_manager import LiveKitManager
 
+setup_logging()
+log = logging.getLogger("app")
+
 # Initialize database
 models.Base.metadata.create_all(bind=engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan management"""
-    # Startup
-    print(" Starting AI Interview Platform...")
+    log.info("Starting ")
     
-    # Initialize LiveKit Manager
     app.state.livekit_manager = LiveKitManager()
     
     yield
     
-    # Shutdown
-    print(" Shutting down AI Interview Platform...")
+    log.info("Shutting down")
 
-# Create FastAPI app
 app = FastAPI(
     title="AI Interview Platform",
     description="AI-powered interview platform with LiveKit integration",
@@ -39,10 +40,9 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure properly for production
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

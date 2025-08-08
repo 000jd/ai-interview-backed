@@ -163,25 +163,25 @@ class PromptManager:
                 """
 
         return f"""
-{self.base_instructions}
+                {self.base_instructions}
 
-{position_specific}
+                {position_specific}
 
-INTERVIEW CONTEXT:
-- Candidate: {candidate_name}
-- Position: {position}{company_info}
-- Duration: Aim for 15-20 minutes total
-- Current phase: Introduction (you will advance through phases automatically)
+                INTERVIEW CONTEXT:
+                - Candidate: {candidate_name}
+                - Position: {position}{company_info}
+                - Duration: Aim for 15-20 minutes total
+                - Current phase: Introduction (you will advance through phases automatically)
 
-Remember to use the provided functions to:
-- record_candidate_info() - Capture basic details
-- record_question() - Log each question asked
-- record_response() - Score and log candidate responses
-- add_interviewer_note() - Add observations
-- advance_interview_phase() - Move to next phase
-- complete_interview() - Finish with summary
+                Remember to use the provided functions to:
+                - record_candidate_info() - Capture basic details
+                - record_question() - Log each question asked
+                - record_response() - Score and log candidate responses
+                - add_interviewer_note() - Add observations
+                - advance_interview_phase() - Move to next phase
+                - complete_interview() - Finish with summary
 
-Start with a warm welcome and introduction!"""
+                Start with a warm welcome and introduction!"""
 
     def get_technical_questions(self, position: str) -> List[str]:
         """Get technical questions for specific position"""
