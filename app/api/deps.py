@@ -1,39 +1,55 @@
-from typing import Generator
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-from jose import jwt
-from pydantic import ValidationError
+from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from app.db.database import get_db
+from app.core.security import decode_access_token
+from app import crud
+from typing import Optional
 
-from app.db.base import SessionLocal
-from app.core.config import settings
-from app.schemas import token as token_schema
-from app.crud import crud_user
-from app.db.models import user as user_model
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
+http_bearer = HTTPBearer()
 
-reusable_oauth2 = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
-
-def get_db() -> Generator:
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    """Get current authenticated user"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
     try:
-        db = SessionLocal()
-        yield db
-    finally:
-        db.close()
-
-def get_current_user(
-    db: Session = Depends(get_db), token: str = Depends(reusable_oauth2)
-) -> user_model.User:
-    try:
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
-        token_data = token_schema.TokenData(**payload)
-    except (jwt.JWTError, ValidationError):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Could not validate credentials",
-        )
-    user = crud_user.user.get_by_email(db, email=token_data.email)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        email = decode_access_token(token)
+        if email is None:
+            raise credentials_exception
+    except:
+        raise credentials_exception
+    
+    user = crud.get_user_by_email(db, email=email)
+    if user is None:
+        raise credentials_exception
     return user
+
+async def get_current_active_user(current_user = Depends(get_current_user)):
+    """Get current active user"""
+    if not current_user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+async def get_api_key_user(
+    credentials: HTTPAuthorizationCredentials = Depends(http_bearer),
+    db: Session = Depends(get_db)
+):
+    """Authenticate using API key"""
+    api_key = credentials.credentials
+    
+    db_api_key = crud.get_api_key(db, key=api_key)
+    if not db_api_key or not db_api_key.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or inactive API key"
+        )
+    
+    # Update usage statistics
+    crud.update_api_key_usage(db, db_api_key.id)
+    
+    return db_api_key.owner

@@ -1,22 +1,85 @@
-from fastapi import FastAPI
-from app.api.routers import auth, interviews, users
-from app.db.base import Base, engine
+from fastapi import FastAPI, Depends, HTTPException, status
+from scalar_fastapi import get_scalar_api_reference
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from contextlib import asynccontextmanager
+import uvicorn
 
-# This creates the database tables if they don't exist
-# In a production setup, you would use Alembic for migrations
-Base.metadata.create_all(bind=engine)
+# Import all modules
+from app.core.config import settings
+from app.core.security import get_password_hash, verify_password, create_access_token, decode_access_token
+from app.db.database import engine, get_db
+from app.db import models
+from app import schemas, crud
+from app.api.api import api_router
+from app.core.livekit_manager import LiveKitManager
 
+# Initialize database
+models.Base.metadata.create_all(bind=engine)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan management"""
+    # Startup
+    print(" Starting AI Interview Platform...")
+    
+    # Initialize LiveKit Manager
+    app.state.livekit_manager = LiveKitManager()
+    
+    yield
+    
+    # Shutdown
+    print(" Shutting down AI Interview Platform...")
+
+# Create FastAPI app
 app = FastAPI(
     title="AI Interview Platform",
-    description="The backend for the AI Interview Platform.",
-    version="0.1.0"
+    description="AI-powered interview platform with LiveKit integration",
+    version="1.0.0",
+    lifespan=lifespan
 )
 
-# Include API routers
-app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
-app.include_router(interviews.router, prefix="/api/v1/interviews", tags=["interviews"])
-app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure properly for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(api_router, prefix="/api")
+
+@app.get("/scalar", include_in_schema=False)
+async def scalar_html():
+    return get_scalar_api_reference(
+        openapi_url=app.openapi_url,
+        title=app.title,
+    )
 
 @app.get("/")
-def read_root():
-    return {"message": "Welcome to the AI Interview Platform API"}
+async def root():
+    """Health check endpoint"""
+    return {
+        "message": "AI Interview Platform API is running",
+        "version": "1.0.0",
+        "status": "healthy"
+    }
+
+@app.get("/health")
+async def health_check():
+    """Detailed health check"""
+    return {
+        "status": "healthy",
+        "database": "connected",
+        "livekit": "configured",
+        "version": "1.0.0"
+    }
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True
+    )

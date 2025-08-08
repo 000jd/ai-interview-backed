@@ -1,0 +1,192 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from typing import List, Optional
+
+from app import schemas, crud
+from app.db.database import get_db
+from app.api.deps import get_current_active_user, get_api_key_user
+from app.core.livekit_manager import LiveKitManager
+
+router = APIRouter()
+
+# Dependency to get LiveKit manager
+def get_livekit_manager():
+    return LiveKitManager()
+
+@router.post("/", response_model=schemas.Interview)
+async def create_interview(
+    interview: schemas.InterviewCreate,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+    livekit_manager: LiveKitManager = Depends(get_livekit_manager)
+):
+    """Create new interview session"""
+    # Create interview in database
+    db_interview = crud.create_interview(db=db, interview=interview, user_id=current_user.id)
+    
+    # Create LiveKit room
+    room_created = await livekit_manager.create_room(
+        room_name=db_interview.room_name,
+        empty_timeout=1800  # 30 minutes
+    )
+    
+    if not room_created:
+        # Update status to indicate room creation failed
+        crud.update_interview(
+            db, 
+            db_interview.id, 
+            schemas.InterviewUpdate(status="room_creation_failed")
+        )
+    
+    return db_interview
+
+@router.get("/", response_model=List[schemas.Interview])
+async def list_interviews(
+    skip: int = 0,
+    limit: int = 100,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """List user's interviews"""
+    return crud.get_user_interviews(db, user_id=current_user.id, skip=skip, limit=limit)
+
+@router.get("/{interview_id}", response_model=schemas.Interview)
+async def get_interview(
+    interview_id: int,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Get interview details"""
+    db_interview = crud.get_interview(db, interview_id=interview_id)
+    
+    if not db_interview:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Interview not found"
+        )
+    
+    # Check if user owns this interview
+    if db_interview.creator_id != current_user.id and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
+    return db_interview
+
+@router.put("/{interview_id}", response_model=schemas.Interview)
+async def update_interview(
+    interview_id: int,
+    interview_update: schemas.InterviewUpdate,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Update interview"""
+    db_interview = crud.get_interview(db, interview_id=interview_id)
+    
+    if not db_interview:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Interview not found"
+        )
+    
+    # Check permissions
+    if db_interview.creator_id != current_user.id and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
+    updated_interview = crud.update_interview(db, interview_id, interview_update)
+    return updated_interview
+
+@router.post("/{interview_id}/token", response_model=schemas.InterviewToken)
+async def generate_interview_token(
+    interview_id: int,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+    livekit_manager: LiveKitManager = Depends(get_livekit_manager)
+):
+    """Generate LiveKit token for interview participant"""
+    db_interview = crud.get_interview(db, interview_id=interview_id)
+    
+    if not db_interview:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Interview not found"
+        )
+    
+    # Check permissions
+    if db_interview.creator_id != current_user.id and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
+    # Generate token
+    token = livekit_manager.generate_token(
+        room_name=db_interview.room_name,
+        participant_name=db_interview.candidate_name,
+        identity=f"candidate-{interview_id}"
+    )
+    
+    return schemas.InterviewToken(
+        token=token,
+        room_name=db_interview.room_name,
+        participant_name=db_interview.candidate_name
+    )
+
+# API endpoint for external integrations (uses API key auth)
+@router.post("/api/create", response_model=schemas.Interview)
+async def api_create_interview(
+    interview: schemas.InterviewCreate,
+    current_user = Depends(get_api_key_user),
+    db: Session = Depends(get_db),
+    livekit_manager: LiveKitManager = Depends(get_livekit_manager)
+):
+    """Create interview via API key (for integrations)"""
+    # Create interview in database
+    db_interview = crud.create_interview(db=db, interview=interview, user_id=current_user.id)
+    
+    # Create LiveKit room
+    room_created = await livekit_manager.create_room(
+        room_name=db_interview.room_name,
+        empty_timeout=1800  # 30 minutes
+    )
+    
+    if not room_created:
+        crud.update_interview(
+            db, 
+            db_interview.id, 
+            schemas.InterviewUpdate(status="room_creation_failed")
+        )
+    
+    return db_interview
+
+@router.post("/api/{interview_id}/token", response_model=schemas.InterviewToken)
+async def api_generate_interview_token(
+    interview_id: int,
+    current_user = Depends(get_api_key_user),
+    db: Session = Depends(get_db),
+    livekit_manager: LiveKitManager = Depends(get_livekit_manager)
+):
+    """Generate interview token via API key"""
+    db_interview = crud.get_interview(db, interview_id=interview_id)
+    
+    if not db_interview or db_interview.creator_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Interview not found"
+        )
+    
+    token = livekit_manager.generate_token(
+        room_name=db_interview.room_name,
+        participant_name=db_interview.candidate_name,
+        identity=f"candidate-{interview_id}"
+    )
+    
+    return schemas.InterviewToken(
+        token=token,
+        room_name=db_interview.room_name,
+        participant_name=db_interview.candidate_name
+    )
