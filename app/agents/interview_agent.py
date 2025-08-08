@@ -182,19 +182,16 @@ async def entrypoint(ctx: agents.JobContext):
     """Main entrypoint for the interview agent"""
     logger.info("Starting AI Interview Agent")
     
-    # Get interview configuration from room metadata or use defaults
     interview_config = {
         "candidate_name": "Candidate",
         "position": "Software Engineer",
         "company_name": "Your Company"
     }
     
-    # Create the interview agent
     agent = InterviewAgent(interview_config)
     
-    # Configure AI components
     session = AgentSession(
-        # Speech-to-Text: Deepgram Nova-2
+
         stt=deepgram.STT(
             model="nova-2-conversationalai",
             language="en",
@@ -203,7 +200,6 @@ async def entrypoint(ctx: agents.JobContext):
             profanity_filter=False,
         ),
         
-        # Large Language Model: Google Gemini
         llm=google.LLM(
             model="gemini-1.5-flash",
             api_key=settings.GOOGLE_API_KEY,
@@ -211,23 +207,18 @@ async def entrypoint(ctx: agents.JobContext):
             max_output_tokens=1024,
         ),
         
-        # Text-to-Speech: ElevenLabs (more natural than Cartesia for interviews)
         tts=elevenlabs.TTS(
             api_key=settings.ELEVENLABS_API_KEY,
-            voice_id="pNInz6obpgDQGcFmaJgB",  # Professional female voice
+            voice_id="pNInz6obpgDQGcFmaJgB",  
             model="eleven_multilingual_v2",
             streaming=True
         ),
         
-        # Voice Activity Detection
         vad=ctx.proc.userdata.get("vad", silero.VAD.load()),
         
-        # Turn Detection for better conversation flow
         turn_detection=MultilingualModel(),
     )
     
-    # Start the session
     await session.start(room=ctx.room, agent=agent)
-    
-    # Send welcome message
+
     welcome_msg = "Hello! Welcome to your interview today. I'm excited to speak with you and learn more about your background. Could you please start by telling me your name and confirming the position you're interviewing for?"
