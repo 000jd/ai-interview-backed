@@ -219,3 +219,5 @@ async def entrypoint(ctx: agents.JobContext):
     await session.start(room=ctx.room, agent=agent)
 
     welcome_msg = "Hello! Welcome to your interview today. I'm excited to speak with you and learn more about your background. Could you please start by telling me your name and confirming the position you're interviewing for?"
+    # Actually send the welcome message to the participant
+    await session.say(welcome_msg)

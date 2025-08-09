@@ -4,6 +4,7 @@ from app.db import models
 from app import schemas
 from app.core.security import get_password_hash, verify_password, generate_api_key, generate_api_secret
 from datetime import datetime, timezone
+import uuid
 
 # User CRUD operations
 def get_user_by_email(db: Session, email: str) -> Optional[models.User]:
@@ -84,8 +85,11 @@ def deactivate_api_key(db: Session, key_id: str, user_id: str) -> bool:
 
 def create_interview(db: Session, interview: schemas.InterviewCreate, user_id: str) -> models.Interview:
     """Create new interview"""
+    # Ensure we have a unique room name; client does not send it
+    generated_room_name = f"interview-{uuid.uuid4().hex[:12]}"
     db_interview = models.Interview(
         **interview.model_dump(),
+        room_name=generated_room_name,
         creator_id=user_id
     )
     db.add(db_interview)
@@ -129,3 +133,16 @@ def is_token_blocklisted(db: Session, jti: str) -> bool:
     """Check if a token's JTI is in the blocklist."""
     token = db.query(models.TokenBlocklist).filter(models.TokenBlocklist.jti == jti).first()
     return token is not None
+
+def cleanup_expired_blocklisted_tokens(db: Session) -> int:
+    """Delete blocklisted tokens that have naturally expired.
+
+    Returns number of rows deleted.
+    """
+    now = datetime.now(timezone.utc)
+    deleted_count = db.query(models.TokenBlocklist).filter(
+        models.TokenBlocklist.expires_at.isnot(None),
+        models.TokenBlocklist.expires_at < now,
+    ).delete(synchronize_session=False)
+    db.commit()
+    return int(deleted_count or 0)

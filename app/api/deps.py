@@ -29,7 +29,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         if email is None or jti is None or exp is None:
             raise credentials_exception
         
-        expire_time = datetime.fromtimestamp(exp, tz=timezone.utc)
+        expire_time = datetime.fromtimestamp(int(exp), tz=timezone.utc)
         
         if datetime.now(timezone.utc) > expire_time:
              raise credentials_exception

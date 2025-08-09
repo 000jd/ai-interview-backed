@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Header, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app import schemas, crud
 from app.db.database import get_db
@@ -76,7 +76,7 @@ async def logout(
         if not jti or not exp:
             raise credentials_exception
             
-        expires_at = datetime.fromtimestamp(exp)
+        expires_at = datetime.fromtimestamp(int(exp), tz=timezone.utc)
         
         # Add token to blocklist
         crud.add_token_to_blocklist(db, jti=jti, expires_at=expires_at)

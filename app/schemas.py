@@ -78,7 +78,7 @@ class Interview(InterviewBase):
     technical_score: int
     behavioral_score: int
     created_at: datetime
-    creator_id: int
+    creator_id: str
     
     class Config:
         from_attributes = True

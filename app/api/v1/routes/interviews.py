@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -9,7 +9,10 @@ from app.core.livekit_manager import LiveKitManager
 
 router = APIRouter()
 
-def get_livekit_manager():
+def get_livekit_manager(request: Request) -> LiveKitManager:
+    """Reuse app-scoped LiveKitManager singleton when available."""
+    if hasattr(request.app.state, "livekit_manager") and request.app.state.livekit_manager:
+        return request.app.state.livekit_manager
     return LiveKitManager()
 
 @router.post("/", response_model=schemas.Interview)
@@ -48,7 +51,7 @@ async def list_interviews(
 
 @router.get("/{interview_id}", response_model=schemas.Interview)
 async def get_interview(
-    interview_id: int,
+    interview_id: str,
     current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -71,7 +74,7 @@ async def get_interview(
 
 @router.put("/{interview_id}", response_model=schemas.Interview)
 async def update_interview(
-    interview_id: int,
+    interview_id: str,
     interview_update: schemas.InterviewUpdate,
     current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db)
@@ -96,7 +99,7 @@ async def update_interview(
 
 @router.post("/{interview_id}/token", response_model=schemas.InterviewToken)
 async def generate_interview_token(
-    interview_id: int,
+    interview_id: str,
     current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
     livekit_manager: LiveKitManager = Depends(get_livekit_manager)

@@ -60,10 +60,14 @@ class LiveKitManager:
     async def create_room(self, room_name: str, empty_timeout: int = 300) -> bool:
         """Create LiveKit room"""
         try:
-            if not self.api_key or not self.api_secret:
+            if not self.api_key or not self.api_secret or not self.server_url:
                 return False
                 
-            lk_api = LiveKitAPI()
+            lk_api = LiveKitAPI(
+                base_url=self.server_url,
+                api_key=self.api_key,
+                api_secret=self.api_secret,
+            )
             
             create_request = CreateRoomRequest(
                 name=room_name,
@@ -82,10 +86,14 @@ class LiveKitManager:
     async def list_rooms(self) -> list:
         """List active LiveKit rooms"""
         try:
-            if not self.api_key or not self.api_secret:
+            if not self.api_key or not self.api_secret or not self.server_url:
                 return []
                 
-            lk_api = LiveKitAPI()
+            lk_api = LiveKitAPI(
+                base_url=self.server_url,
+                api_key=self.api_key,
+                api_secret=self.api_secret,
+            )
             rooms = await lk_api.room.list_rooms(ListRoomsRequest())
             await lk_api.aclose()
             

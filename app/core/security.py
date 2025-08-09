@@ -19,9 +19,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     
-    # + Add unique identifier (jti) and expiration time (exp) to the claims
+    # + Add unique identifier (jti) and expiration time (exp as int timestamp) to the claims
     to_encode.update({
-        "exp": expire,
+        "exp": int(expire.timestamp()),
         "jti": uuid.uuid4().hex
     })
     
