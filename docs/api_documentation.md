@@ -25,7 +25,7 @@ Registers a new user in the system.
 **Response (200 OK):**
 ```json
 {
-  "id": 1,
+  "id": "b1a2...",
   "email": "user@example.com",
   "username": "newuser",
   "full_name": "New User",
@@ -78,30 +78,7 @@ Logs out the current user by invalidating their access token. The token is added
 **Error Responses:**
 *   `401 Unauthorized`: Invalid token.
 
-### Get current user information
-`GET /auth/me`
-
-Retrieves the profile information of the currently authenticated user.
-
-**Headers:**
-`Authorization: Bearer <access_token>`
-
-**Response (200 OK):**
-```json
-{
-  "id": 1,
-  "email": "user@example.com",
-  "username": "newuser",
-  "full_name": "New User",
-  "is_active": true,
-  "is_superuser": false,
-  "created_at": "2023-01-01T12:00:00.000Z"
-}
-```
-
-**Error Responses:**
-*   `401 Unauthorized`: Not authenticated.
-*   `400 Bad Request`: Inactive user.
+> Note: Current user profile is available via `/users/me`.
 
 ## Users
 
@@ -116,7 +93,7 @@ Retrieves the profile information of the currently authenticated user. (Alias fo
 **Response (200 OK):**
 ```json
 {
-  "id": 1,
+  "id": "b1a2...",
   "email": "user@example.com",
   "username": "newuser",
   "full_name": "New User",
@@ -150,7 +127,7 @@ Updates the profile information of the currently authenticated user.
 **Response (200 OK):**
 ```json
 {
-  "id": 1,
+  "id": "b1a2...",
   "email": "user@example.com",
   "username": "newuser",
   "full_name": "Updated Name",
@@ -184,7 +161,7 @@ Creates a new API key for the current user. There is a limit on the number of ac
 **Response (200 OK):**
 ```json
 {
-  "id": 1,
+  "id": "key_123...",
   "name": "My Integration Key",
   "key": "pk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
   "secret": "sk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
@@ -211,7 +188,7 @@ Lists all API keys belonging to the current user.
 ```json
 [
   {
-    "id": 1,
+    "id": "key_123...",
     "name": "My Integration Key",
     "key": "pk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
     "is_active": true,
@@ -234,7 +211,7 @@ Deactivates a specific API key by its ID.
 `Authorization: Bearer <access_token>`
 
 **Path Parameters:**
-`key_id`: The ID of the API key to deactivate.
+`key_id`: The ID of the API key to deactivate (string UUID).
 
 **Response (200 OK):**
 ```json
@@ -275,17 +252,17 @@ Creates a new interview session and a corresponding LiveKit room.
 **Response (200 OK):**
 ```json
 {
-  "id": 1,
+  "id": "a3b4...",
   "title": "Software Engineer Interview",
   "candidate_name": "Jane Doe",
   "candidate_email": "jane.doe@example.com",
   "position": "Software Engineer",
-  "status": "pending",
+  "status": "scheduled",
   "room_name": "interview-abcdef123456",
   "technical_score": 0,
   "behavioral_score": 0,
   "created_at": "2023-08-10T14:30:00.000Z",
-  "creator_id": 1
+  "creator_id": "b1a2..."
 }
 ```
 
@@ -308,17 +285,17 @@ Lists all interview sessions created by the current user.
 ```json
 [
   {
-    "id": 1,
+    "id": "a3b4...",
     "title": "Software Engineer Interview",
     "candidate_name": "Jane Doe",
     "candidate_email": "jane.doe@example.com",
     "position": "Software Engineer",
-    "status": "pending",
+    "status": "scheduled",
     "room_name": "interview-abcdef123456",
     "technical_score": 0,
     "behavioral_score": 0,
     "created_at": "2023-08-10T14:30:00.000Z",
-    "creator_id": 1
+    "creator_id": "b1a2..."
   }
 ]
 ```
@@ -335,22 +312,22 @@ Retrieves the details of a specific interview session.
 `Authorization: Bearer <access_token>`
 
 **Path Parameters:**
-`interview_id`: The ID of the interview to retrieve.
+`interview_id`: The ID of the interview to retrieve (string UUID).
 
 **Response (200 OK):**
 ```json
 {
-  "id": 1,
+  "id": "a3b4...",
   "title": "Software Engineer Interview",
   "candidate_name": "Jane Doe",
   "candidate_email": "jane.doe@example.com",
   "position": "Software Engineer",
-  "status": "pending",
+  "status": "scheduled",
   "room_name": "interview-abcdef123456",
   "technical_score": 0,
   "behavioral_score": 0,
   "created_at": "2023-08-10T14:30:00.000Z",
-  "creator_id": 1
+  "creator_id": "b1a2..."
 }
 ```
 
@@ -368,7 +345,7 @@ Updates the details of an existing interview session.
 `Authorization: Bearer <access_token>`
 
 **Path Parameters:**
-`interview_id`: The ID of the interview to update.
+`interview_id`: The ID of the interview to update (string UUID).
 
 **Request Body:**
 ```json
@@ -384,7 +361,7 @@ Updates the details of an existing interview session.
 **Response (200 OK):**
 ```json
 {
-  "id": 1,
+  "id": "a3b4...",
   "title": "Updated Interview Title",
   "candidate_name": "Jane Doe",
   "candidate_email": "jane.doe@example.com",
@@ -394,7 +371,7 @@ Updates the details of an existing interview session.
   "technical_score": 85,
   "behavioral_score": 90,
   "created_at": "2023-08-10T14:30:00.000Z",
-  "creator_id": 1
+  "creator_id": "b1a2..."
 }
 ```
 
@@ -412,7 +389,7 @@ Generates a LiveKit token for a participant to join the specified interview's ro
 `Authorization: Bearer <access_token>`
 
 **Path Parameters:**
-`interview_id`: The ID of the interview for which to generate a token.
+`interview_id`: The ID of the interview for which to generate a token (string UUID).
 
 **Response (200 OK):**
 ```json
