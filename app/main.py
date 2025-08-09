@@ -17,20 +17,20 @@ from app.api.api import api_router
 from app.core.livekit_manager import LiveKitManager
 
 setup_logging()
-log = logging.getLogger("app")
+logger = logging.getLogger("app")
 
 models.Base.metadata.create_all(bind=engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan management"""
-    log.info("Starting ")
+    logger.info("Starting ")
     
     app.state.livekit_manager = LiveKitManager()
     
     yield
     
-    log.info("Shutting down")
+    logger.info("Shutting down")
 
 app = FastAPI(
     title="AI Interview Platform",

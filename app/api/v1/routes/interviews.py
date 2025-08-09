@@ -119,7 +119,7 @@ async def generate_interview_token(
     token = livekit_manager.generate_token(
         room_name=db_interview.room_name,
         participant_name=db_interview.candidate_name,
-        identity=f"candidate-{interview_id}"
+        identity=f"candidate-{db_interview.id}"
     )
     
     return schemas.InterviewToken(
@@ -154,7 +154,7 @@ async def api_create_interview(
 
 @router.post("/api/{interview_id}/token", response_model=schemas.InterviewToken)
 async def api_generate_interview_token(
-    interview_id: int,
+    interview_id: str,
     current_user = Depends(get_api_key_user),
     db: Session = Depends(get_db),
     livekit_manager: LiveKitManager = Depends(get_livekit_manager)
@@ -171,7 +171,7 @@ async def api_generate_interview_token(
     token = livekit_manager.generate_token(
         room_name=db_interview.room_name,
         participant_name=db_interview.candidate_name,
-        identity=f"candidate-{interview_id}"
+        identity=f"candidate-{db_interview.id}"
     )
     
     return schemas.InterviewToken(

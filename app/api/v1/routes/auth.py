@@ -18,7 +18,8 @@ async def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = crud.get_user_by_email(db, email=user.email)
     if db_user:
         raise HTTPException(
-            status_code=400,# Updated return type hint
+            status_code=400,
+            
             detail="Email already registered"
         )
     
@@ -63,7 +64,6 @@ async def logout(
         detail="Invalid token for logout",
     )
     
-    # The header is expected to be "Bearer <token>"
     token = authorization.split(" ")[1] if " " in authorization else None
     if not token:
         raise credentials_exception
@@ -82,10 +82,8 @@ async def logout(
         crud.add_token_to_blocklist(db, jti=jti, expires_at=expires_at)
         
     except HTTPException:
-        # Re-raise the exception from decode_access_token if it's invalid
         raise
     except Exception:
-        # Catch any other potential errors
         raise credentials_exception
 
     return {"message": "Successfully logged out"}

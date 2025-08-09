@@ -9,7 +9,6 @@ import string
 
 from app.core.config import settings
 
-# Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:

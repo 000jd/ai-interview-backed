@@ -3,7 +3,7 @@ from typing import Optional, List
 from app.db import models
 from app import schemas
 from app.core.security import get_password_hash, verify_password, generate_api_key, generate_api_secret
-from datetime import datetime
+from datetime import datetime, timezone
 
 # User CRUD operations
 def get_user_by_email(db: Session, email: str) -> Optional[models.User]:
@@ -37,8 +37,7 @@ def authenticate_user(db: Session, email: str, password: str) -> Optional[models
         return None
     return user
 
-# API Key CRUD operations
-def create_api_key(db: Session, api_key: schemas.APIKeyCreate, user_id: int) -> models.APIKey:
+def create_api_key(db: Session, api_key: schemas.APIKeyCreate, user_id: str) -> models.APIKey:
     """Create new API key"""
     key = generate_api_key()
     secret = generate_api_secret()
@@ -54,7 +53,7 @@ def create_api_key(db: Session, api_key: schemas.APIKeyCreate, user_id: int) -> 
     db.refresh(db_api_key)
     return db_api_key
 
-def get_user_api_keys(db: Session, user_id: int) -> List[models.APIKey]:
+def get_user_api_keys(db: Session, user_id: str) -> List[models.APIKey]:
     """Get all API keys for a user"""
     return db.query(models.APIKey).filter(models.APIKey.owner_id == user_id).all()
 
@@ -62,15 +61,15 @@ def get_api_key(db: Session, key: str) -> Optional[models.APIKey]:
     """Get API key by key"""
     return db.query(models.APIKey).filter(models.APIKey.key == key).first()
 
-def update_api_key_usage(db: Session, api_key_id: int):
+def update_api_key_usage(db: Session, api_key_id: str):
     """Update API key usage statistics"""
     db_api_key = db.query(models.APIKey).filter(models.APIKey.id == api_key_id).first()
     if db_api_key:
         db_api_key.usage_count += 1
-        db_api_key.last_used_at = datetime.utcnow()
+        db_api_key.last_used_at = datetime.now(timezone.utc)
         db.commit()
 
-def deactivate_api_key(db: Session, key_id: int, user_id: int) -> bool:
+def deactivate_api_key(db: Session, key_id: str, user_id: str) -> bool:
     """Deactivate API key"""
     db_api_key = db.query(models.APIKey).filter(
         models.APIKey.id == key_id,
@@ -83,15 +82,10 @@ def deactivate_api_key(db: Session, key_id: int, user_id: int) -> bool:
         return True
     return False
 
-# Interview CRUD operations
-def create_interview(db: Session, interview: schemas.InterviewCreate, user_id: int) -> models.Interview:
+def create_interview(db: Session, interview: schemas.InterviewCreate, user_id: str) -> models.Interview:
     """Create new interview"""
-    import uuid
-    room_name = f"interview-{uuid.uuid4().hex[:12]}"
-    
     db_interview = models.Interview(
-        **interview.dict(),
-        room_name=room_name,
+        **interview.model_dump(),
         creator_id=user_id
     )
     db.add(db_interview)
@@ -99,23 +93,23 @@ def create_interview(db: Session, interview: schemas.InterviewCreate, user_id: i
     db.refresh(db_interview)
     return db_interview
 
-def get_user_interviews(db: Session, user_id: int, skip: int = 0, limit: int = 100) -> List[models.Interview]:
+def get_user_interviews(db: Session, user_id: str, skip: int = 0, limit: int = 100) -> List[models.Interview]:
     """Get interviews created by user"""
     return db.query(models.Interview).filter(
         models.Interview.creator_id == user_id
     ).offset(skip).limit(limit).all()
 
-def get_interview(db: Session, interview_id: int) -> Optional[models.Interview]:
+def get_interview(db: Session, interview_id: str) -> Optional[models.Interview]:
     """Get interview by ID"""
     return db.query(models.Interview).filter(models.Interview.id == interview_id).first()
 
-def update_interview(db: Session, interview_id: int, interview_update: schemas.InterviewUpdate) -> Optional[models.Interview]:
+def update_interview(db: Session, interview_id: str, interview_update: schemas.InterviewUpdate) -> Optional[models.Interview]:
     """Update interview"""
     db_interview = db.query(models.Interview).filter(models.Interview.id == interview_id).first()
     if not db_interview:
         return None
     
-    update_data = interview_update.dict(exclude_unset=True)
+    update_data = interview_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_interview, field, value)
     

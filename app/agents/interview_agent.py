@@ -1,13 +1,10 @@
-# =============================================================================
-# File: app/agents/interview_agent.py - LiveKit Interview Agent
-# =============================================================================
-
 import asyncio
 import logging
 from typing import Dict, Any
 from livekit import agents
 from livekit.agents import Agent, AgentSession, function_tool, RunContext
 from livekit.plugins import deepgram, cartesia, google, silero, elevenlabs
+from app.core.logging_config import setup_logging
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 from datetime import datetime
 import json
@@ -15,8 +12,8 @@ import json
 from app.prompts.interview_prompts import prompt_manager, InterviewPhase
 from app.core.config import settings
 
-# Configure logging
-logger = logging.getLogger(__name__)
+setup_logging()
+logger = logging.getLogger("app")
 
 class InterviewData:
     """Interview session data management"""

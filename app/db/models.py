@@ -1,3 +1,4 @@
+import uuid
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -7,7 +8,7 @@ class User(Base):
     """User model"""
     __tablename__ = "users"
     
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String(36), primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
     email = Column(String, unique=True, index=True, nullable=False)
     username = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
@@ -25,7 +26,7 @@ class APIKey(Base):
     """API Key model for managing user API keys"""
     __tablename__ = "api_keys"
     
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String(36), primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
     name = Column(String, nullable=False)
     key = Column(String, unique=True, index=True, nullable=False)
     secret = Column(String, nullable=False)
@@ -35,7 +36,7 @@ class APIKey(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Foreign key
-    owner_id = Column(Integer, ForeignKey("users.id"))
+    owner_id = Column(String(36), ForeignKey("users.id"))
     
     # Relationships
     owner = relationship("User", back_populates="api_keys")
@@ -44,7 +45,7 @@ class Interview(Base):
     """Interview session model"""
     __tablename__ = "interviews"
     
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String(36), primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
     title = Column(String, nullable=False)
     candidate_name = Column(String, nullable=False)
     candidate_email = Column(String)
@@ -70,7 +71,7 @@ class Interview(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     # Foreign key
-    creator_id = Column(Integer, ForeignKey("users.id"))
+    creator_id = Column(String(36), ForeignKey("users.id"))
     
     # Relationships
     creator = relationship("User", back_populates="interviews")
@@ -79,6 +80,6 @@ class TokenBlocklist(Base):
     """Stores revoked JWT tokens"""
     __tablename__ = "token_blocklist"
     
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String(36), primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
     jti = Column(String, unique=True, index=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

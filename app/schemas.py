@@ -16,7 +16,7 @@ class UserUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 class User(UserBase):
-    id: int
+    id: str
     is_active: bool
     is_superuser: bool
     created_at: datetime
@@ -40,7 +40,7 @@ class APIKeyCreate(APIKeyBase):
     pass
 
 class APIKey(APIKeyBase):
-    id: int
+    id: str
     key: str
     is_active: bool
     usage_count: int
@@ -72,7 +72,7 @@ class InterviewUpdate(BaseModel):
     overall_feedback: Optional[str] = None
 
 class Interview(InterviewBase):
-    id: int
+    id: str
     status: str
     room_name: str
     technical_score: int

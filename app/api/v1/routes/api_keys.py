@@ -37,7 +37,7 @@ async def list_api_keys(
 
 @router.delete("/{key_id}")
 async def deactivate_api_key(
-    key_id: int,
+    key_id: str,
     current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
