@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
+from jose import JWTError
 from sqlalchemy.orm import Session
 from app.db import models
 from app.db.database import get_db
@@ -11,8 +12,8 @@ from typing import Optional
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
 http_bearer = HTTPBearer()
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> models.User: 
-    """Get current authenticated user, checking for token revocation.""" 
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> models.User:
+    """Get current authenticated user, checking for token revocation."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -28,28 +29,28 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         if email is None or jti is None or exp is None:
             raise credentials_exception
         
-        # Check if token has expired
-        if datetime.now(timezone.utc) > datetime.fromtimestamp(exp):
+        expire_time = datetime.fromtimestamp(exp, tz=timezone.utc)
+        
+        if datetime.now(timezone.utc) > expire_time:
              raise credentials_exception
              
-        # + Check if token is blocklisted
         if crud.is_token_blocklisted(db, jti=jti):
             raise credentials_exception
 
-    except:
-        raise credentials_exception
-    
-    user = crud.get_user_by_email(db, email=email)
-    if user is None:
-        raise credentials_exception
-    return user
+        user = crud.get_user_by_email(db, email=email)
+        if user is None:
+            raise credentials_exception
+        
+        return user
 
-async def get_current_active_user(current_user = Depends(get_current_user)):
+    except JWTError:
+        raise credentials_exception
+
+async def get_current_active_user(current_user: models.User = Depends(get_current_user)):
     """Get current active user"""
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
-
 async def get_api_key_user(
     credentials: HTTPAuthorizationCredentials = Depends(http_bearer),
     db: Session = Depends(get_db)

@@ -90,8 +90,9 @@ async def logout(
 
     return {"message": "Successfully logged out"}
 
+'''
 @router.get("/me", response_model=schemas.User)
 async def read_users_me(current_user = Depends(get_current_active_user)):
     """Get current user information"""
     return current_user
-
+'''
