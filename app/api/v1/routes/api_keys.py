@@ -2,16 +2,17 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 
-from app import schemas, crud
+from app import crud
+from app.schemas import api_key as api_key_schemas
 from app.db.database import get_db
 from app.api.deps import get_current_active_user
 from app.core.config import settings
 
 router = APIRouter()
 
-@router.post("/", response_model=schemas.APIKeyWithSecret)
+@router.post("/", response_model=api_key_schemas.APIKeyWithSecret)
 async def create_api_key(
-    api_key: schemas.APIKeyCreate,
+    api_key: api_key_schemas.APIKeyCreate,
     current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -27,7 +28,7 @@ async def create_api_key(
     
     return crud.create_api_key(db=db, api_key=api_key, user_id=current_user.id)
 
-@router.get("/", response_model=List[schemas.APIKey])
+@router.get("/", response_model=List[api_key_schemas.APIKey])
 async def list_api_keys(
     current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db)

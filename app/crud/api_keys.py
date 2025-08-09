@@ -2,11 +2,11 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 from app.db import models
-from app import schemas
+from app.schemas import api_key as api_key_schemas
 from app.core.security import generate_api_key, generate_api_secret
 
 
-def create_api_key(db: Session, api_key: schemas.APIKeyCreate, user_id: str) -> models.APIKey:
+def create_api_key(db: Session, api_key: api_key_schemas.APIKeyCreate, user_id: str) -> models.APIKey:
     key = generate_api_key()
     secret = generate_api_secret()
     db_api_key = models.APIKey(name=api_key.name, key=key, secret=secret, owner_id=user_id)

@@ -3,7 +3,9 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
 
-from app import schemas, crud
+from app import crud
+from app.schemas import user as user_schemas
+from app.schemas import auth as auth_schemas
 from app.db.database import get_db
 from app.core.config import settings
 from app.core.security import create_access_token, decode_access_token
@@ -11,8 +13,8 @@ from app.api.deps import get_current_active_user
 
 router = APIRouter()
 
-@router.post("/register", response_model=schemas.User)
-async def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
+@router.post("/register", response_model=user_schemas.User)
+async def register(user: user_schemas.UserCreate, db: Session = Depends(get_db)):
     """Register a new user"""
     # Check if user already exists
     db_user = crud.get_user_by_email(db, email=user.email)
@@ -33,7 +35,7 @@ async def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     # Create user
     return crud.create_user(db=db, user=user)
 
-@router.post("/login", response_model=schemas.Token)
+@router.post("/login", response_model=auth_schemas.Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """Login user and return access token"""
     user = crud.authenticate_user(db, email=form_data.username, password=form_data.password)

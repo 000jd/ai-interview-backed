@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from app import schemas, crud
+from app import crud
+from app.schemas import interview as interview_schemas
 from app.db.database import get_db
 from app.api.deps import get_current_active_user, get_api_key_user
 from app.core.livekit_manager import LiveKitManager
@@ -15,9 +16,9 @@ def get_livekit_manager(request: Request) -> LiveKitManager:
         return request.app.state.livekit_manager
     return LiveKitManager()
 
-@router.post("/", response_model=schemas.Interview)
+@router.post("/", response_model=interview_schemas.Interview)
 async def create_interview(
-    interview: schemas.InterviewCreate,
+    interview: interview_schemas.InterviewCreate,
     current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
     livekit_manager: LiveKitManager = Depends(get_livekit_manager)
@@ -34,12 +35,12 @@ async def create_interview(
         crud.update_interview(
             db, 
             db_interview.id, 
-            schemas.InterviewUpdate(status="room_creation_failed")
+            interview_schemas.InterviewUpdate(status="room_creation_failed")
         )
     
     return db_interview
 
-@router.get("/", response_model=List[schemas.Interview])
+@router.get("/", response_model=List[interview_schemas.Interview])
 async def list_interviews(
     skip: int = 0,
     limit: int = 100,
@@ -49,7 +50,7 @@ async def list_interviews(
     """List user's interviews"""
     return crud.get_user_interviews(db, user_id=current_user.id, skip=skip, limit=limit)
 
-@router.get("/{interview_id}", response_model=schemas.Interview)
+@router.get("/{interview_id}", response_model=interview_schemas.Interview)
 async def get_interview(
     interview_id: str,
     current_user = Depends(get_current_active_user),
@@ -72,10 +73,10 @@ async def get_interview(
     
     return db_interview
 
-@router.put("/{interview_id}", response_model=schemas.Interview)
+@router.put("/{interview_id}", response_model=interview_schemas.Interview)
 async def update_interview(
     interview_id: str,
-    interview_update: schemas.InterviewUpdate,
+    interview_update: interview_schemas.InterviewUpdate,
     current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -97,7 +98,7 @@ async def update_interview(
     updated_interview = crud.update_interview(db, interview_id, interview_update)
     return updated_interview
 
-@router.post("/{interview_id}/token", response_model=schemas.InterviewToken)
+@router.post("/{interview_id}/token", response_model=interview_schemas.InterviewToken)
 async def generate_interview_token(
     interview_id: str,
     current_user = Depends(get_current_active_user),
@@ -125,15 +126,15 @@ async def generate_interview_token(
         identity=f"candidate-{db_interview.id}"
     )
     
-    return schemas.InterviewToken(
+    return interview_schemas.InterviewToken(
         token=token,
         room_name=db_interview.room_name,
         participant_name=db_interview.candidate_name
     )
 
-@router.post("/api/create", response_model=schemas.Interview)
+@router.post("/api/create", response_model=interview_schemas.Interview)
 async def api_create_interview(
-    interview: schemas.InterviewCreate,
+    interview: interview_schemas.InterviewCreate,
     current_user = Depends(get_api_key_user),
     db: Session = Depends(get_db),
     livekit_manager: LiveKitManager = Depends(get_livekit_manager)
@@ -150,12 +151,12 @@ async def api_create_interview(
         crud.update_interview(
             db, 
             db_interview.id, 
-            schemas.InterviewUpdate(status="room_creation_failed")
+            interview_schemas.InterviewUpdate(status="room_creation_failed")
         )
     
     return db_interview
 
-@router.post("/api/{interview_id}/token", response_model=schemas.InterviewToken)
+@router.post("/api/{interview_id}/token", response_model=interview_schemas.InterviewToken)
 async def api_generate_interview_token(
     interview_id: str,
     current_user = Depends(get_api_key_user),
@@ -177,7 +178,7 @@ async def api_generate_interview_token(
         identity=f"candidate-{db_interview.id}"
     )
     
-    return schemas.InterviewToken(
+    return interview_schemas.InterviewToken(
         token=token,
         room_name=db_interview.room_name,
         participant_name=db_interview.candidate_name

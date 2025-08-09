@@ -11,7 +11,7 @@ import uvicorn
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password, create_access_token, decode_access_token
 from app.db.database import engine, get_db
-from app.db import models
+from app.db.models import Base as ModelsBase
 from app import schemas, crud
 from app.api.api import api_router
 from app.core.livekit_manager import LiveKitManager
@@ -19,7 +19,7 @@ from app.core.livekit_manager import LiveKitManager
 setup_logging()
 logger = logging.getLogger("app")
 
-models.Base.metadata.create_all(bind=engine)
+ModelsBase.metadata.create_all(bind=engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
