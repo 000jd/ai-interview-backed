@@ -1,148 +1,29 @@
-from sqlalchemy.orm import Session
-from typing import Optional, List
-from app.db import models
-from app import schemas
-from app.core.security import get_password_hash, verify_password, generate_api_key, generate_api_secret
-from datetime import datetime, timezone
-import uuid
+"""
+Backwards-compatible facade for CRUD functions. New code should import from
+app.crud.users, app.crud.api_keys, app.crud.interviews, app.crud.tokens.
+"""
 
-# User CRUD operations
-def get_user_by_email(db: Session, email: str) -> Optional[models.User]:
-    """Get user by email"""
-    return db.query(models.User).filter(models.User.email == email).first()
-
-def get_user_by_username(db: Session, username: str) -> Optional[models.User]:
-    """Get user by username"""
-    return db.query(models.User).filter(models.User.username == username).first()
-
-def create_user(db: Session, user: schemas.UserCreate) -> models.User:
-    """Create new user"""
-    hashed_password = get_password_hash(user.password)
-    db_user = models.User(
-        email=user.email,
-        username=user.username,
-        full_name=user.full_name,
-        hashed_password=hashed_password
-    )
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return db_user
-
-def authenticate_user(db: Session, email: str, password: str) -> Optional[models.User]:
-    """Authenticate user"""
-    user = get_user_by_email(db, email=email)
-    if not user:
-        return None
-    if not verify_password(password, user.hashed_password):
-        return None
-    return user
-
-def create_api_key(db: Session, api_key: schemas.APIKeyCreate, user_id: str) -> models.APIKey:
-    """Create new API key"""
-    key = generate_api_key()
-    secret = generate_api_secret()
-    
-    db_api_key = models.APIKey(
-        name=api_key.name,
-        key=key,
-        secret=secret,
-        owner_id=user_id
-    )
-    db.add(db_api_key)
-    db.commit()
-    db.refresh(db_api_key)
-    return db_api_key
-
-def get_user_api_keys(db: Session, user_id: str) -> List[models.APIKey]:
-    """Get all API keys for a user"""
-    return db.query(models.APIKey).filter(models.APIKey.owner_id == user_id).all()
-
-def get_api_key(db: Session, key: str) -> Optional[models.APIKey]:
-    """Get API key by key"""
-    return db.query(models.APIKey).filter(models.APIKey.key == key).first()
-
-def update_api_key_usage(db: Session, api_key_id: str):
-    """Update API key usage statistics"""
-    db_api_key = db.query(models.APIKey).filter(models.APIKey.id == api_key_id).first()
-    if db_api_key:
-        db_api_key.usage_count += 1
-        db_api_key.last_used_at = datetime.now(timezone.utc)
-        db.commit()
-
-def deactivate_api_key(db: Session, key_id: str, user_id: str) -> bool:
-    """Deactivate API key"""
-    db_api_key = db.query(models.APIKey).filter(
-        models.APIKey.id == key_id,
-        models.APIKey.owner_id == user_id
-    ).first()
-    
-    if db_api_key:
-        db_api_key.is_active = False
-        db.commit()
-        return True
-    return False
-
-def create_interview(db: Session, interview: schemas.InterviewCreate, user_id: str) -> models.Interview:
-    """Create new interview"""
-    # Ensure we have a unique room name; client does not send it
-    generated_room_name = f"interview-{uuid.uuid4().hex[:12]}"
-    db_interview = models.Interview(
-        **interview.model_dump(),
-        room_name=generated_room_name,
-        creator_id=user_id
-    )
-    db.add(db_interview)
-    db.commit()
-    db.refresh(db_interview)
-    return db_interview
-
-def get_user_interviews(db: Session, user_id: str, skip: int = 0, limit: int = 100) -> List[models.Interview]:
-    """Get interviews created by user"""
-    return db.query(models.Interview).filter(
-        models.Interview.creator_id == user_id
-    ).offset(skip).limit(limit).all()
-
-def get_interview(db: Session, interview_id: str) -> Optional[models.Interview]:
-    """Get interview by ID"""
-    return db.query(models.Interview).filter(models.Interview.id == interview_id).first()
-
-def update_interview(db: Session, interview_id: str, interview_update: schemas.InterviewUpdate) -> Optional[models.Interview]:
-    """Update interview"""
-    db_interview = db.query(models.Interview).filter(models.Interview.id == interview_id).first()
-    if not db_interview:
-        return None
-    
-    update_data = interview_update.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(db_interview, field, value)
-    
-    db.commit()
-    db.refresh(db_interview)
-    return db_interview
-
-def add_token_to_blocklist(db: Session, jti: str, expires_at: datetime):
-    """Add a token's JTI to the blocklist."""
-    db_token = models.TokenBlocklist(jti=jti, expires_at=expires_at)
-    db.add(db_token)
-    db.commit()
-    db.refresh(db_token)
-    return db_token
-
-def is_token_blocklisted(db: Session, jti: str) -> bool:
-    """Check if a token's JTI is in the blocklist."""
-    token = db.query(models.TokenBlocklist).filter(models.TokenBlocklist.jti == jti).first()
-    return token is not None
-
-def cleanup_expired_blocklisted_tokens(db: Session) -> int:
-    """Delete blocklisted tokens that have naturally expired.
-
-    Returns number of rows deleted.
-    """
-    now = datetime.now(timezone.utc)
-    deleted_count = db.query(models.TokenBlocklist).filter(
-        models.TokenBlocklist.expires_at.isnot(None),
-        models.TokenBlocklist.expires_at < now,
-    ).delete(synchronize_session=False)
-    db.commit()
-    return int(deleted_count or 0)
+from .users import (
+    get_user_by_email,
+    get_user_by_username,
+    create_user,
+    authenticate_user,
+)
+from .api_keys import (
+    create_api_key,
+    get_user_api_keys,
+    get_api_key,
+    update_api_key_usage,
+    deactivate_api_key,
+)
+from .interviews import (
+    create_interview,
+    get_user_interviews,
+    get_interview,
+    update_interview,
+)
+from .tokens import (
+    add_token_to_blocklist,
+    is_token_blocklisted,
+    cleanup_expired_blocklisted_tokens,
+)
