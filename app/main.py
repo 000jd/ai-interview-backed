@@ -12,7 +12,7 @@ from app.core.config import settings
 from app.core.security import get_password_hash, verify_password, create_access_token, decode_access_token
 from app.db.database import engine, get_db
 from app.db.models import Base as ModelsBase
-from app import schemas, crud
+# Note: prefer importing specific CRUD modules in routes; facade remains for compatibility if needed
 from app.api.api import api_router
 from app.core.livekit_manager import LiveKitManager
 

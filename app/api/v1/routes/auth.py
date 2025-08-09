@@ -3,7 +3,13 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
 
-from app import crud
+from app.crud.users import (
+    get_user_by_email,
+    get_user_by_username,
+    create_user,
+    authenticate_user,
+)
+from app.crud.tokens import add_token_to_blocklist
 from app.schemas import user as user_schemas
 from app.schemas import auth as auth_schemas
 from app.db.database import get_db
@@ -17,7 +23,7 @@ router = APIRouter()
 async def register(user: user_schemas.UserCreate, db: Session = Depends(get_db)):
     """Register a new user"""
     # Check if user already exists
-    db_user = crud.get_user_by_email(db, email=user.email)
+    db_user = get_user_by_email(db, email=user.email)
     if db_user:
         raise HTTPException(
             status_code=400,
@@ -25,7 +31,7 @@ async def register(user: user_schemas.UserCreate, db: Session = Depends(get_db))
             detail="Email already registered"
         )
     
-    db_user = crud.get_user_by_username(db, username=user.username)
+    db_user = get_user_by_username(db, username=user.username)
     if db_user:
         raise HTTPException(
             status_code=400,
@@ -33,12 +39,12 @@ async def register(user: user_schemas.UserCreate, db: Session = Depends(get_db))
         )
     
     # Create user
-    return crud.create_user(db=db, user=user)
+    return create_user(db=db, user=user)
 
 @router.post("/login", response_model=auth_schemas.Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """Login user and return access token"""
-    user = crud.authenticate_user(db, email=form_data.username, password=form_data.password)
+    user = authenticate_user(db, email=form_data.username, password=form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -81,7 +87,7 @@ async def logout(
         expires_at = datetime.fromtimestamp(int(exp), tz=timezone.utc)
         
         # Add token to blocklist
-        crud.add_token_to_blocklist(db, jti=jti, expires_at=expires_at)
+        add_token_to_blocklist(db, jti=jti, expires_at=expires_at)
         
     except HTTPException:
         raise

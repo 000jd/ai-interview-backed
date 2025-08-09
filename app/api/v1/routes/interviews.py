@@ -2,7 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from app import crud
+from app.crud.interviews import (
+    create_interview as create_interview_crud,
+    get_user_interviews as get_user_interviews_crud,
+    get_interview as get_interview_crud,
+    update_interview as update_interview_crud,
+)
 from app.schemas import interview as interview_schemas
 from app.db.database import get_db
 from app.api.deps import get_current_active_user, get_api_key_user
@@ -24,7 +29,7 @@ async def create_interview(
     livekit_manager: LiveKitManager = Depends(get_livekit_manager)
 ):
     """Create new interview session"""
-    db_interview = crud.create_interview(db=db, interview=interview, user_id=current_user.id)
+    db_interview = create_interview_crud(db=db, interview=interview, user_id=current_user.id)
     
     room_created = await livekit_manager.create_room(
         room_name=db_interview.room_name,
@@ -32,7 +37,7 @@ async def create_interview(
     )
     
     if not room_created:
-        crud.update_interview(
+        update_interview_crud(
             db, 
             db_interview.id, 
             interview_schemas.InterviewUpdate(status="room_creation_failed")
@@ -48,7 +53,7 @@ async def list_interviews(
     db: Session = Depends(get_db)
 ):
     """List user's interviews"""
-    return crud.get_user_interviews(db, user_id=current_user.id, skip=skip, limit=limit)
+    return get_user_interviews_crud(db, user_id=current_user.id, skip=skip, limit=limit)
 
 @router.get("/{interview_id}", response_model=interview_schemas.Interview)
 async def get_interview(
@@ -57,7 +62,7 @@ async def get_interview(
     db: Session = Depends(get_db)
 ):
     """Get interview details"""
-    db_interview = crud.get_interview(db, interview_id=interview_id)
+    db_interview = get_interview_crud(db, interview_id=interview_id)
     
     if not db_interview:
         raise HTTPException(
@@ -95,7 +100,7 @@ async def update_interview(
             detail="Not enough permissions"
         )
     
-    updated_interview = crud.update_interview(db, interview_id, interview_update)
+    updated_interview = update_interview_crud(db, interview_id, interview_update)
     return updated_interview
 
 @router.post("/{interview_id}/token", response_model=interview_schemas.InterviewToken)
@@ -106,7 +111,7 @@ async def generate_interview_token(
     livekit_manager: LiveKitManager = Depends(get_livekit_manager)
 ):
     """Generate LiveKit token for interview participant"""
-    db_interview = crud.get_interview(db, interview_id=interview_id)
+    db_interview = get_interview_crud(db, interview_id=interview_id)
     
     if not db_interview:
         raise HTTPException(
@@ -140,7 +145,7 @@ async def api_create_interview(
     livekit_manager: LiveKitManager = Depends(get_livekit_manager)
 ):
     """Create interview via API key (for integrations)"""
-    db_interview = crud.create_interview(db=db, interview=interview, user_id=current_user.id)
+    db_interview = create_interview_crud(db=db, interview=interview, user_id=current_user.id)
     
     room_created = await livekit_manager.create_room(
         room_name=db_interview.room_name,
@@ -148,7 +153,7 @@ async def api_create_interview(
     )
     
     if not room_created:
-        crud.update_interview(
+        update_interview_crud(
             db, 
             db_interview.id, 
             interview_schemas.InterviewUpdate(status="room_creation_failed")
@@ -164,7 +169,7 @@ async def api_generate_interview_token(
     livekit_manager: LiveKitManager = Depends(get_livekit_manager)
 ):
     """Generate interview token via API key"""
-    db_interview = crud.get_interview(db, interview_id=interview_id)
+    db_interview = get_interview_crud(db, interview_id=interview_id)
     
     if not db_interview or db_interview.creator_id != current_user.id:
         raise HTTPException(

@@ -6,7 +6,9 @@ from sqlalchemy.orm import Session
 from app.db import models
 from app.db.database import get_db
 from app.core.security import decode_access_token
-from app import crud
+from app.crud.tokens import is_token_blocklisted
+from app.crud.users import get_user_by_email
+from app.crud.api_keys import get_api_key, update_api_key_usage
 from typing import Optional
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
@@ -34,10 +36,10 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         if datetime.now(timezone.utc) > expire_time:
              raise credentials_exception
              
-        if crud.is_token_blocklisted(db, jti=jti):
+        if is_token_blocklisted(db, jti=jti):
             raise credentials_exception
 
-        user = crud.get_user_by_email(db, email=email)
+        user = get_user_by_email(db, email=email)
         if user is None:
             raise credentials_exception
         
@@ -58,13 +60,13 @@ async def get_api_key_user(
     """Authenticate using API key"""
     api_key = credentials.credentials
     
-    db_api_key = crud.get_api_key(db, key=api_key)
+    db_api_key = get_api_key(db, key=api_key)
     if not db_api_key or not db_api_key.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or inactive API key"
         )
     
-    crud.update_api_key_usage(db, db_api_key.id)
+    update_api_key_usage(db, db_api_key.id)
     
     return db_api_key.owner
