@@ -1,12 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Header, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from app import schemas, crud
 from app.db.database import get_db
 from app.core.config import settings
-from app.core.security import create_access_token
+from app.core.security import create_access_token, decode_access_token
 from app.api.deps import get_current_active_user
 
 router = APIRouter()
@@ -18,7 +18,7 @@ async def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = crud.get_user_by_email(db, email=user.email)
     if db_user:
         raise HTTPException(
-            status_code=400,
+            status_code=400,# Updated return type hint
             detail="Email already registered"
         )
     
@@ -49,6 +49,46 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
     )
     
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.post("/logout")
+async def logout(
+    authorization: str = Header(...),
+    db: Session = Depends(get_db)
+):
+    """
+    Logout user by adding the current token to the blocklist.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid token for logout",
+    )
+    
+    # The header is expected to be "Bearer <token>"
+    token = authorization.split(" ")[1] if " " in authorization else None
+    if not token:
+        raise credentials_exception
+
+    try:
+        payload = decode_access_token(token)
+        jti = payload.get("jti")
+        exp = payload.get("exp")
+        
+        if not jti or not exp:
+            raise credentials_exception
+            
+        expires_at = datetime.fromtimestamp(exp)
+        
+        # Add token to blocklist
+        crud.add_token_to_blocklist(db, jti=jti, expires_at=expires_at)
+        
+    except HTTPException:
+        # Re-raise the exception from decode_access_token if it's invalid
+        raise
+    except Exception:
+        # Catch any other potential errors
+        raise credentials_exception
+
+    return {"message": "Successfully logged out"}
 
 @router.get("/me", response_model=schemas.User)
 async def read_users_me(current_user = Depends(get_current_active_user)):

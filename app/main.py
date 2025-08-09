@@ -19,7 +19,6 @@ from app.core.livekit_manager import LiveKitManager
 setup_logging()
 log = logging.getLogger("app")
 
-# Initialize database
 models.Base.metadata.create_all(bind=engine)
 
 @asynccontextmanager

@@ -74,3 +74,11 @@ class Interview(Base):
     
     # Relationships
     creator = relationship("User", back_populates="interviews")
+    
+class TokenBlocklist(Base):
+    """Stores revoked JWT tokens"""
+    __tablename__ = "token_blocklist"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    jti = Column(String, unique=True, index=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

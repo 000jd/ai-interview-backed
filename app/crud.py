@@ -122,3 +122,16 @@ def update_interview(db: Session, interview_id: int, interview_update: schemas.I
     db.commit()
     db.refresh(db_interview)
     return db_interview
+
+def add_token_to_blocklist(db: Session, jti: str, expires_at: datetime):
+    """Add a token's JTI to the blocklist."""
+    db_token = models.TokenBlocklist(jti=jti, expires_at=expires_at)
+    db.add(db_token)
+    db.commit()
+    db.refresh(db_token)
+    return db_token
+
+def is_token_blocklisted(db: Session, jti: str) -> bool:
+    """Check if a token's JTI is in the blocklist."""
+    token = db.query(models.TokenBlocklist).filter(models.TokenBlocklist.jti == jti).first()
+    return token is not None
