@@ -94,3 +94,4 @@ async def logout(
 async def read_users_me(current_user = Depends(get_current_active_user)):
     """Get current user information"""
     return current_user
+
